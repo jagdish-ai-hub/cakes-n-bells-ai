@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cakes N Bells</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff85a1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #fff9f9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .cake-pink { background-color: #ff85a1; }
+        .cake-light-pink { background-color: #ffafcc; }
+        .text-cake-pink { color: #ff85a1; }
+        .bg-cream { background-color: #fcf6f5; }
+        
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+          50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2.5s infinite;
+        }
+
+        /* --- Custom Page Transitions --- */
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideInRight {
+            0% { opacity: 0; transform: translateX(20px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+            animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.96) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+
+        /* Safe area handling for modern mobile displays */
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA SW Registered'))
+                    .catch(err => console.log('PWA SW Registration Failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
