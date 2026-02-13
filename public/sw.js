@@ -1,0 +1,91 @@
+
+const CACHE_NAME = 'cakes-n-bells-v3';
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Activate immediately
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      // Cache core assets immediately
+      return cache.addAll(ASSETS_TO_CACHE); 
+    })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim(); // Take control of open pages immediately
+});
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // 1. Navigation Requests (HTML pages) -> Network First, Fallback to Cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match('./index.html') || caches.match('./');
+        })
+    );
+    return;
+  }
+
+  // 2. Images -> Cache First, Fallback to Network
+  if (event.request.destination === 'image') {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        
+        return fetch(event.request).then((networkResponse) => {
+           if(networkResponse && networkResponse.status === 200) {
+             const responseClone = networkResponse.clone();
+             caches.open(CACHE_NAME).then((cache) => {
+               try { cache.put(event.request, responseClone); } catch(e) {}
+             });
+           }
+           return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. JS/CSS/Fonts -> Stale-While-Revalidate
+  if (url.pathname.match(/\.(js|css|woff2|woff)$/)) {
+     event.respondWith(
+       caches.match(event.request).then(cachedResponse => {
+         const fetchPromise = fetch(event.request).then(networkResponse => {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+            return networkResponse;
+         });
+         return cachedResponse || fetchPromise;
+       })
+     );
+     return;
+  }
+
+  // Default: Network only
+  event.respondWith(fetch(event.request));
+});
