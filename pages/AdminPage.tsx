@@ -55,8 +55,9 @@ export default function AdminPage() {
         contents: `Write a short, appetizing, 2-sentence description for a ${formData.category} named '${formData.name}'. Make it sound premium and delicious. Do not use markdown.`,
       });
       
-      if (response.text) {
-        setFormData(prev => ({ ...prev, description: response.text.trim() }));
+      const text = response.text;
+      if (text) {
+        setFormData(prev => ({ ...prev, description: text.trim() }));
       }
     } catch (error) {
       console.error("AI Generation Error:", error);
@@ -96,8 +97,9 @@ export default function AdminPage() {
       });
 
       let rawImageUrl = '';
-      if (response.candidates && response.candidates[0].content.parts) {
-        for (const part of response.candidates[0].content.parts) {
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
           if (part.inlineData) {
             rawImageUrl = `data:image/png;base64,${part.inlineData.data}`;
             break;

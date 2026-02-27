@@ -16,6 +16,7 @@ const Checkout: React.FC<CheckoutProps> = ({ setLastOrder }) => {
     fullName: '',
     mobile: '',
     address: '',
+    pincode: '',
     paymentMethod: 'COD'
   });
 
@@ -36,6 +37,8 @@ const Checkout: React.FC<CheckoutProps> = ({ setLastOrder }) => {
     if (!form.mobile) newErrors.mobile = 'Mobile number is required';
     else if (!/^\d{10}$/.test(form.mobile)) newErrors.mobile = 'Enter a valid 10-digit number';
     if (!form.address) newErrors.address = 'Full Address is required';
+    if (!form.pincode) newErrors.pincode = 'Pincode is required';
+    else if (!/^\d{6}$/.test(form.pincode)) newErrors.pincode = 'Enter a valid 6-digit pincode';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -95,12 +98,25 @@ const Checkout: React.FC<CheckoutProps> = ({ setLastOrder }) => {
           <label className="block text-sm font-bold text-gray-700 mb-2">Full Delivery Address</label>
           <textarea 
             rows={3}
-            placeholder="House no, Street, Landmark, Pincode"
+            placeholder="House no, Street, Landmark"
             className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none resize-none ${errors.address ? 'border-red-300' : 'border-gray-100'}`}
             value={form.address}
             onChange={(e) => setForm({...form, address: e.target.value})}
           />
           {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Pincode</label>
+          <input 
+            type="text" 
+            maxLength={6}
+            placeholder="6-digit pincode"
+            className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.pincode ? 'border-red-300' : 'border-gray-100'}`}
+            value={form.pincode}
+            onChange={(e) => setForm({...form, pincode: e.target.value.replace(/\D/g, '')})}
+          />
+          {errors.pincode && <p className="text-xs text-red-500 mt-1">{errors.pincode}</p>}
         </div>
 
         <div>

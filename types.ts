@@ -35,6 +35,7 @@ export interface CustomerDetails {
   fullName: string;
   mobile: string;
   address: string;
+  pincode: string;
   paymentMethod: 'COD' | 'UPI';
 }
 

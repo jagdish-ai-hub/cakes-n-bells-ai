@@ -16,6 +16,13 @@ const Payment: React.FC<PaymentProps> = ({ lastOrder }) => {
   const navigate = useNavigate();
   const { products } = useProducts();
   const [productDetails, setProductDetails] = useState<Product | undefined>(undefined);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyNumber = () => {
+    navigator.clipboard.writeText('9322820147');
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   useEffect(() => {
     if (!lastOrder) {
@@ -58,6 +65,7 @@ const Payment: React.FC<PaymentProps> = ({ lastOrder }) => {
 Name: ${customer.fullName}
 Mobile: ${customer.mobile}
 Address: ${customer.address}
+Pincode: ${customer.pincode}
 
 *Order Summary:*
 Product: ${item.name}
@@ -81,7 +89,7 @@ ${closingText}`;
         {customer.paymentMethod === 'UPI' ? (
           <div className="p-8 md:p-12 text-center">
             <h2 className="text-3xl font-black text-gray-900 mb-2 font-serif tracking-tight">Final Step!</h2>
-            <p className="text-gray-500 mb-6 font-medium">Scan to pay exactly <span className="text-gray-900 font-bold">₹{amountToPay}</span></p>
+            <p className="text-gray-500 mb-6 font-medium">Scan QR with any upi app such as phonepe,Gpay to pay  <span className="text-gray-900 font-bold">₹{amountToPay}</span></p>
             
             {/* Dynamic QR Code Section */}
             <div className="relative w-72 h-72 mx-auto mb-4 bg-white rounded-3xl shadow-inner border-8 border-cream flex items-center justify-center p-2 overflow-hidden">
@@ -105,7 +113,17 @@ ${closingText}`;
 
             <div className="bg-pink-50/80 backdrop-blur py-4 px-8 rounded-2xl inline-flex flex-col items-center mb-6 border border-pink-100">
               <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">Pay to this mobile number:</span>
-              <span className="font-black text-xl text-gray-900 tracking-wider font-mono">{WHATSAPP_NUMBER}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-black text-xl text-gray-900 tracking-wider font-mono">9322820147</span>
+                <button 
+                  onClick={handleCopyNumber}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-pink-200 text-pink-500 hover:bg-pink-50 transition-all active:scale-90"
+                  title="Copy to clipboard"
+                >
+                  <i className={`fas ${isCopied ? 'fa-check' : 'fa-copy'}`}></i>
+                </button>
+              </div>
+              {isCopied && <span className="text-[10px] text-green-600 font-bold mt-1 animate-pulse">Copied!</span>}
             </div>
 
             <div className="mb-10 p-4 border border-blue-200 bg-blue-50/50 text-blue-600 rounded-xl text-xs font-bold uppercase tracking-wide leading-relaxed">

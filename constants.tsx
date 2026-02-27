@@ -351,4 +351,4 @@ export const PRODUCTS: Product[] = [
   }
 ];
 
-export const WHATSAPP_NUMBER = '+919438394676';
+export const WHATSAPP_NUMBER = '+919322820147';
