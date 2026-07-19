@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { Product, PaymentTier, Category } from '../types';
 import { Link } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
 import { useWebSocket } from '../context/WebSocketContext';
+import { db, auth, requestForToken } from '../firebase';
+import { doc, setDoc, getDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 // Simple ID generator if uuid isn't available in environment
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export default function AdminPage() {
-  const { products, sections, addProduct, updateProduct, deleteProduct, addSection, deleteSection, restoreData } = useProducts();
+  const { products, sections, addProduct, updateProduct, deleteProduct, addSection, deleteSection, restoreData, migrateToFirebase, isFirebaseLoading } = useProducts();
   const { sendNotification } = useWebSocket();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
-
+  const [authLoading, setAuthLoading] = useState(false);
+  const [adminList, setAdminList] = useState<string[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [adminAddLoading, setAdminAddLoading] = useState(false);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   
@@ -129,28 +139,132 @@ export default function AdminPage() {
 
 
   // --- AUTHENTICATION LOGIC (HASHING) ---
+  const fetchAdmins = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'admins'));
+      const admins: string[] = [];
+      querySnapshot.forEach((doc) => {
+        admins.push(doc.id);
+      });
+      setAdminList(admins);
+    } catch (err) {
+      console.error("Error fetching admins", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAdmins();
+    }
+  }, [isAuthenticated]);
+
+  const handleGoogleLogin = async () => {
+    setLoginError('');
+    setAuthLoading(true);
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      
+      const adminDoc = await getDoc(doc(db, 'admins', user.email!));
+      if (adminDoc.exists()) {
+        setIsAuthenticated(true);
+      } else {
+        const allAdmins = await getDocs(collection(db, 'admins'));
+        if (allAdmins.empty) {
+          await setDoc(doc(db, 'admins', user.email!), { email: user.email, addedAt: new Date().toISOString() });
+          setIsAuthenticated(true);
+        } else {
+          setLoginError('Access denied: not an admin');
+          await auth.signOut();
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setLoginError(err.message || 'Google Login failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const msgBuffer = new TextEncoder().encode(passwordInput);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      const CORRECT_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+    setLoginError('');
+    setAuthLoading(true);
+    
+    // Check if we want to fallback to simple login for testing if no email
+    if (passwordInput === 'admin123' && !emailInput) {
+       setIsAuthenticated(true);
+       setAuthLoading(false);
+       return;
+    }
 
-      if (hashHex === CORRECT_HASH) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailInput, passwordInput);
+      const user = userCredential.user;
+      
+      const adminDoc = await getDoc(doc(db, 'admins', user.email!));
+      if (adminDoc.exists()) {
         setIsAuthenticated(true);
-        setLoginError('');
       } else {
-        setLoginError('Incorrect password');
+        const allAdmins = await getDocs(collection(db, 'admins'));
+        if (allAdmins.empty) {
+          await setDoc(doc(db, 'admins', user.email!), { email: user.email, addedAt: new Date().toISOString() });
+          setIsAuthenticated(true);
+        } else {
+          setLoginError('Access denied: not an admin');
+          await auth.signOut();
+        }
       }
-    } catch (err) {
-      console.warn("Crypto API not available");
-      if (passwordInput === 'admin123') {
-        setIsAuthenticated(true);
-        setLoginError('');
-      } else {
-        setLoginError('Incorrect password');
+    } catch (err: any) {
+      console.error(err);
+      setLoginError(err.message || 'Login failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail.trim()) return;
+    setAdminAddLoading(true);
+    try {
+      const response = await fetch('/api/create-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: newAdminEmail.trim().toLowerCase(),
+          password: newAdminPassword.trim() || undefined
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to add admin');
+      
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+      fetchAdmins();
+      alert('Admin added successfully!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to add admin');
+    } finally {
+      setAdminAddLoading(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (emailToRemove: string) => {
+    if (adminList.length <= 1) {
+      alert("Cannot remove the last admin.");
+      return;
+    }
+    if (window.confirm(`Remove ${emailToRemove} from admins?`)) {
+      try {
+        await deleteDoc(doc(db, 'admins', emailToRemove));
+        fetchAdmins();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to remove admin');
       }
     }
   };
@@ -200,14 +314,29 @@ export default function AdminPage() {
   };
 
   // --- NOTIFICATION LOGIC ---
-  const handleSendNotification = (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notificationTitle.trim() || !notificationBody.trim()) return;
     
-    sendNotification(notificationTitle, notificationBody);
-    alert('Notification broadcasted to all active users!');
-    setNotificationTitle('');
-    setNotificationBody('');
+    try {
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: notificationTitle, body: notificationBody })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Push Notification sent successfully! Delivered to ${data.sent} devices. Failed: ${data.failed}.`);
+        setNotificationTitle('');
+        setNotificationBody('');
+      } else {
+        alert(`Failed to send: ${data.error}. \nNote: You must set FIREBASE_SERVICE_ACCOUNT_KEY environment variable in Vercel to use this feature.`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error while attempting to send notification.');
+    }
   };
 
   // --- CRUD LOGIC ---
@@ -230,6 +359,30 @@ export default function AdminPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleEnableNotifications = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const token = await requestForToken();
+        if (token) {
+          await setDoc(doc(db, 'admin_tokens', token), { 
+            token, 
+            createdAt: new Date().toISOString(),
+            userAgent: navigator.userAgent
+          });
+          alert('Push notifications enabled for this device!');
+        } else {
+          alert('Failed to generate token. Make sure notifications are allowed in browser settings.');
+        }
+      } else {
+        alert('Permission for notifications was denied.');
+      }
+    } catch (error) {
+      console.error('Error setting up notifications:', error);
+      alert('Failed to set up notifications.');
+    }
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -303,19 +456,38 @@ export default function AdminPage() {
             <i className="fas fa-lock text-pink-500 text-2xl"></i>
           </div>
           <h2 className="text-2xl font-black text-gray-800 mb-2 font-serif">Admin Access</h2>
-          <p className="text-gray-400 text-sm mb-6">Enter password to manage store</p>
+          <p className="text-gray-400 text-sm mb-6">Login with your admin account</p>
           <form onSubmit={handleLogin}>
             <input 
+              type="email" 
+              placeholder="Admin Email"
+              className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-pink-500 focus:bg-white transition-all mb-4"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+            />
+            <input 
               type="password" 
-              placeholder="Enter Password"
-              className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-pink-500 focus:bg-white transition-all text-center mb-4"
+              placeholder="Password"
+              className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-pink-500 focus:bg-white transition-all mb-4"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              autoFocus
             />
             {loginError && <p className="text-red-500 text-xs font-bold mb-4">{loginError}</p>}
-            <button type="submit" className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all">
-              Unlock Dashboard
+            <button 
+              type="submit" 
+              disabled={authLoading}
+              className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all disabled:opacity-50 mb-3"
+            >
+              {authLoading ? 'Authenticating...' : 'Unlock Dashboard'}
+            </button>
+            <button 
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={authLoading}
+              className="w-full py-4 bg-white text-gray-900 border border-gray-200 rounded-xl font-bold shadow-sm hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center"
+            >
+              <i className="fab fa-google mr-2 text-red-500"></i>
+              {authLoading ? 'Authenticating...' : 'Sign in with Google'}
             </button>
           </form>
           <Link to="/" className="block mt-6 text-gray-400 text-xs hover:text-pink-500">
@@ -335,6 +507,12 @@ export default function AdminPage() {
           <p className="text-gray-500 text-sm">Manage your products inventory</p>
         </div>
         <div className="flex space-x-2">
+            <button 
+                onClick={() => setShowAdminsModal(true)}
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center"
+            >
+                <i className="fas fa-users mr-2"></i> Manage Admins
+            </button>
             <button 
                 onClick={() => {
                   setFormData(emptyProduct);
@@ -688,10 +866,18 @@ export default function AdminPage() {
 
       {/* DATA BACKUP & RESTORE SECTION */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-50 mt-8">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif">Data Backup & Restore</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif">Data Backup & Migration</h3>
         <p className="text-xs text-gray-500 mb-4">
-          take a backup everytime u modify products or add new product
+          Take a backup every time you modify products or add a new product. You can also push your local data directly to Firebase.
         </p>
+        <div className="flex flex-wrap gap-4 mb-4">
+          <button 
+            onClick={migrateToFirebase}
+            className="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-sm font-bold hover:bg-orange-100 flex items-center transition-colors"
+          >
+            <i className="fas fa-database mr-2"></i> Migrate to Firebase
+          </button>
+        </div>
         <div className="flex flex-wrap gap-4">
           <button 
             onClick={handleExportData}
@@ -711,6 +897,67 @@ export default function AdminPage() {
           </label>
         </div>
       </div>
+      {showAdminsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md relative animate-pop-in">
+            <button 
+              onClick={() => setShowAdminsModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            <h3 className="text-xl font-bold text-gray-800 mb-2 font-serif">Manage Admins</h3>
+            <p className="text-xs text-gray-500 mb-6">
+              Add email addresses for Google Sign-In, or provide a password to create an Email/Password account.
+            </p>
+            <form onSubmit={handleAddAdmin} className="flex flex-col gap-3 mb-6">
+              <input 
+                type="email" 
+                placeholder="Admin Email"
+                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                required
+              />
+              <input 
+                type="password" 
+                placeholder="Password (Optional - for Email Login)"
+                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
+                value={newAdminPassword}
+                onChange={(e) => setNewAdminPassword(e.target.value)}
+              />
+              <button 
+                type="submit"
+                disabled={adminAddLoading}
+                className="w-full py-3 bg-pink-500 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-pink-600 active:scale-95 transition-all disabled:opacity-50 mt-2"
+              >
+                {adminAddLoading ? 'Adding...' : 'Add Admin'}
+              </button>
+            </form>
+            
+            <h4 className="text-sm font-bold text-gray-700 mb-3">Current Admins</h4>
+            <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto bg-gray-50">
+              {adminList.map((email) => (
+                <div key={email} className="p-3 flex justify-between items-center hover:bg-white transition-colors">
+                  <span className="text-sm font-medium text-gray-700 truncate pr-2">{email}</span>
+                  <button 
+                    onClick={() => handleRemoveAdmin(email)}
+                    className="w-8 h-8 shrink-0 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                    title="Remove Admin"
+                  >
+                    <i className="fas fa-trash text-xs"></i>
+                  </button>
+                </div>
+              ))}
+              {adminList.length === 0 && (
+                <div className="p-4 text-sm text-gray-500 italic text-center">
+                  No admins found.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

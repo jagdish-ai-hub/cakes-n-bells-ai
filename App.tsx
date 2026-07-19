@@ -9,6 +9,7 @@ import Payment from './pages/Payment';
 import WishlistPage from './pages/WishlistPage';
 import AdminPage from './pages/AdminPage';
 import Navbar from './components/Navbar';
+import NotificationBanner from './components/NotificationBanner';
 import { CustomerDetails, OrderItem } from './types';
 import { ProductProvider } from './context/ProductContext';
 
@@ -86,6 +87,7 @@ const App: React.FC = () => {
             canInstall={!!deferredPrompt} 
             onInstall={handleInstallClick} 
           />
+          <NotificationBanner />
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home wishlist={wishlist} onToggleWishlist={toggleWishlist} />} />
