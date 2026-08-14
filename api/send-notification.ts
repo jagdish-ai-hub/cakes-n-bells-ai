@@ -6,16 +6,36 @@ import { getMessaging } from 'firebase-admin/messaging';
 // Initialize Firebase Admin only once
 if (!getApps().length) {
   try {
-    // You will need to put your Firebase Service Account JSON string in this Vercel environment variable
     const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     if (serviceAccountStr) {
-      const serviceAccount = JSON.parse(serviceAccountStr);
+      let serviceAccount;
+      try {
+        serviceAccount = JSON.parse(serviceAccountStr);
+      } catch (e) {
+        // If it's base64 encoded
+        try {
+          const decoded = Buffer.from(serviceAccountStr, 'base64').toString('utf8');
+          serviceAccount = JSON.parse(decoded);
+        } catch (b64Err) {
+          // If it has literal newlines or escaped newlines, normalize them
+          try {
+            const cleaned = serviceAccountStr.replace(/\\n/g, '\n');
+            serviceAccount = JSON.parse(cleaned);
+          } catch (cleanErr) {
+            throw new Error(`Failed to parse Firebase Service Account JSON string: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+
       initializeApp({
         credential: cert(serviceAccount)
       });
+      console.log('Firebase Admin initialized successfully in send-notification with Service Account Key');
+    } else {
+      console.warn('FIREBASE_SERVICE_ACCOUNT_KEY is not defined. Firebase Admin will not be initialized in send-notification api.');
     }
   } catch (error) {
-    console.error('Firebase admin initialization error', error);
+    console.error('Firebase admin initialization error in send-notification:', error);
   }
 }
 
@@ -32,11 +52,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Ensure Firebase was initialized properly
   if (!getApps().length) {
-     return res.status(500).json({ error: 'Firebase Admin not configured. Set FIREBASE_SERVICE_ACCOUNT_KEY env var in Vercel.' });
+     return res.status(500).json({ error: 'Firebase Admin is not initialized because the FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not defined. Please add FIREBASE_SERVICE_ACCOUNT_KEY under AI Studio Settings (the gear icon on the top) or in your Vercel/environment settings.' });
   }
 
   try {
     const db = getFirestore();
+    const messaging = getMessaging();
     // Fetch all customer tokens
     const tokensSnapshot = await db.collection('customer_tokens').get();
     
@@ -60,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       tokens
     };
 
-    const response = await getMessaging().sendEachForMulticast(message);
+    const response = await messaging.sendEachForMulticast(message);
     
     // Optional: Clean up invalid tokens based on response
     const failedTokens: string[] = [];

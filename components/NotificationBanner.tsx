@@ -16,28 +16,27 @@ export default function NotificationBanner() {
   }, []);
 
   const handleEnable = async () => {
+    // Dismiss immediately in UI
+    setShowBanner(false);
+    localStorage.setItem('push_notification_dismissed', 'true');
+
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         const token = await requestForToken();
         if (token) {
-          // Save the token to customer_tokens
+          // Save the token to customer_tokens in the background
           await setDoc(doc(db, 'customer_tokens', token), {
             token,
             createdAt: new Date().toISOString(),
             userAgent: navigator.userAgent
           });
-          setShowBanner(false);
-          // Optional: Add a small toast or just close silently
         } else {
           console.error("No token received");
         }
-      } else {
-        setShowBanner(false);
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
-      setShowBanner(false);
     }
   };
 

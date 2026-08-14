@@ -500,16 +500,17 @@ export default function AdminPage() {
 
   // --- RENDER DASHBOARD ---
   return (
-    <div className="p-4 max-w-4xl mx-auto animate-fade-in-up pb-20">
+    <>
+      <div className="p-4 max-w-4xl md:max-w-6xl mx-auto animate-fade-in-up pb-20">
       <div className="flex justify-between items-center mb-8 mt-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 font-serif">Store Admin</h1>
+          <h1 className="text-3xl font-bold text-gray-800 font-serif md:text-4xl">Store Admin</h1>
           <p className="text-gray-500 text-sm">Manage your products inventory</p>
         </div>
         <div className="flex space-x-2">
             <button 
                 onClick={() => setShowAdminsModal(true)}
-                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center"
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center text-xs md:text-sm"
             >
                 <i className="fas fa-users mr-2"></i> Manage Admins
             </button>
@@ -520,444 +521,472 @@ export default function AdminPage() {
                   setShowForm(!showForm);
                   setGeneratedImage(null);
                 }} 
-                className="bg-pink-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-pink-200 active:scale-95 transition-all"
+                className="bg-pink-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-pink-200 active:scale-95 transition-all text-xs md:text-sm"
             >
                 {showForm ? 'Cancel' : '+ Add Product'}
             </button>
         </div>
       </div>
 
-      {!showForm && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-50 mb-8">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif">Manage Collections</h3>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {sections.map(section => (
-              <div key={section} className="flex items-center bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1 py-1">
-                <span className="text-xs font-bold text-gray-600 mr-2">{section}</span>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        {/* Left/Main Column: Product creation form, Collection management, and Product List */}
+        <div className="md:col-span-7 space-y-8">
+          
+          {/* Add / Edit Form Block */}
+          {showForm && (
+            <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-pink-100 animate-pop-in">
+              <h2 className="text-xl font-bold text-gray-800 mb-6 font-serif">
+                {isEditing ? 'Edit Product' : 'Add New Product'}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Product Name</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+                    <select 
+                      value={formData.category}
+                      onChange={e => setFormData({...formData, category: e.target.value as Category})}
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                    >
+                      <option value="Cake">Cake</option>
+                      <option value="Confectionery">Confectionery</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Description</label>
+                    <button 
+                      type="button" 
+                      onClick={generateDescription}
+                      disabled={isGeneratingDesc || !formData.name}
+                      className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 transition-colors flex items-center disabled:opacity-50"
+                    >
+                      {isGeneratingDesc ? (
+                        <><i className="fas fa-spinner fa-spin mr-1"></i> Writing...</>
+                      ) : (
+                        <><i className="fas fa-wand-magic-sparkles mr-1"></i> Auto-Write</>
+                      )}
+                    </button>
+                  </div>
+                  <textarea 
+                    required
+                    rows={3}
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none resize-none"
+                    placeholder={isGeneratingDesc ? "AI is generating description..." : "Enter product description..."}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {formData.category === 'Cake' ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (0.5kg)</label>
+                        <input 
+                          type="number" 
+                          value={formData.prices['0.5kg'] || ''}
+                          onChange={e => setFormData({...formData, prices: {...formData.prices, '0.5kg': Number(e.target.value)}})}
+                          className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                          placeholder="₹"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (1kg)</label>
+                        <input 
+                          type="number" 
+                          value={formData.prices['1kg'] || ''}
+                          onChange={e => setFormData({...formData, prices: {...formData.prices, '1kg': Number(e.target.value)}})}
+                          className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                          placeholder="₹"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (Piece)</label>
+                      <input 
+                        type="number" 
+                        value={formData.prices['piece'] || ''}
+                        onChange={e => setFormData({...formData, prices: {...formData.prices, 'piece': Number(e.target.value)}})}
+                        className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                        placeholder="₹"
+                      />
+                    </div>
+                  )}
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Tier</label>
+                    <select 
+                      value={formData.paymentTier}
+                      onChange={e => setFormData({...formData, paymentTier: e.target.value as PaymentTier})}
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="premium">Premium</option>
+                      <option value="luxury">Luxury</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sections (Collections)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {sections.map(section => (
+                      <button
+                        type="button"
+                        key={section}
+                        onClick={() => toggleProductSection(section)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                          formData.sections.includes(section)
+                            ? 'bg-pink-500 text-white border-pink-500'
+                            : 'bg-white text-gray-500 border-gray-200'
+                        }`}
+                      >
+                        {section}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Product Images</label>
+                    <button 
+                        type="button" 
+                        onClick={generateImage}
+                        disabled={isGeneratingImg || !formData.name}
+                        className="text-[10px] bg-purple-50 text-purple-600 px-3 py-1 rounded-full font-bold hover:bg-purple-100 transition-colors flex items-center disabled:opacity-50"
+                      >
+                        {isGeneratingImg ? (
+                          <><i className="fas fa-spinner fa-spin mr-1"></i> Designing...</>
+                        ) : (
+                          <><i className="fas fa-image mr-1"></i> Generate AI Photo</>
+                        )}
+                    </button>
+                  </div>
+
+                  {/* GENERATED IMAGE DOWNLOAD SECTION */}
+                  {generatedImage && (
+                    <div className="mt-2 mb-6 p-4 bg-green-50 rounded-xl border border-green-200 animate-pop-in">
+                        <h4 className="font-bold text-green-800 mb-3 text-sm flex items-center">
+                        <i className="fas fa-check-circle mr-2"></i> Design Generated!
+                        </h4>
+                        
+                        <div className="flex flex-col md:flex-row gap-4 items-center">
+                            <img src={generatedImage} alt="AI Generated" className="w-24 h-24 object-cover rounded-lg shadow-md bg-white border border-green-100" />
+                            
+                            <div className="flex-1">
+                                <p className="text-[10px] text-green-700 font-bold mb-2 uppercase tracking-wider">Instructions for Vercel/Production:</p>
+                                <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside font-medium bg-white/50 p-3 rounded-lg border border-green-100">
+                                    <li>
+                                        <a 
+                                            href={generatedImage} 
+                                            download={`${formData.name.replace(/\s+/g, '-').toLowerCase()}-cake.png`} 
+                                            className="text-pink-600 underline font-black hover:text-pink-700"
+                                        >
+                                            Click here to Download Image
+                                        </a>
+                                    </li>
+                                    <li>Upload to <strong>Google Drive</strong> (or any host).</li>
+                                    <li>Copy the link (Ensure "Anyone with link" is ON).</li>
+                                    <li>Paste the link in the <strong>Image URL</strong> box below.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50 p-3 rounded-lg mb-4 text-xs text-blue-800 border border-blue-100">
+                    <strong>Tip:</strong> You can paste a Google Drive share link directly.
+                  </div>
+                  
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className="mb-4">
+                      <div className="flex gap-2 mb-2">
+                        <input 
+                          type="text" 
+                          value={img}
+                          onChange={e => handleImageChange(idx, e.target.value)}
+                          className="flex-grow p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                          placeholder="Image URL (Paste Drive Link)"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveImageField(idx)}
+                          className="p-3 text-red-400 hover:text-red-600 font-bold"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                      {/* Image Preview */}
+                      {img && (
+                        <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative group">
+                          <img 
+                            src={img} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => e.currentTarget.src = 'https://placehold.co/100x100?text=Error'}
+                          />
+                          {img.startsWith('data:image') && (
+                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                <span className="text-[10px] bg-black/50 text-white px-1 rounded">Base64</span>
+                             </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <button 
+                    type="button" 
+                    onClick={handleAddImageField}
+                    className="text-pink-500 text-xs font-bold uppercase tracking-wider hover:text-pink-600"
+                  >
+                    + Add Another Image
+                  </button>
+                </div>
+
+                <button type="submit" className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold shadow-lg active:scale-[0.98] transition-all hover:bg-gray-800">
+                  {isEditing ? 'Save Changes' : 'Create Product'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Manage Collections block - shown on left when form is not active */}
+          {!showForm && (
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-pink-50">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif">Manage Collections</h3>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {sections.map(section => (
+                  <div key={section} className="flex items-center bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1 py-1">
+                    <span className="text-xs font-bold text-gray-600 mr-2">{section}</span>
+                    <button 
+                      onClick={() => handleDeleteSection(section)}
+                      className="w-5 h-5 rounded-full bg-red-100 text-red-500 flex items-center justify-center hover:bg-red-200"
+                    >
+                      <i className="fas fa-times text-[10px]"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="New Collection Name"
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value)}
+                  className="flex-grow p-2 bg-gray-50 rounded-lg border border-gray-200 text-sm outline-none focus:border-pink-400"
+                />
                 <button 
-                  onClick={() => handleDeleteSection(section)}
-                  className="w-5 h-5 rounded-full bg-red-100 text-red-500 flex items-center justify-center hover:bg-red-200"
+                  onClick={handleAddSection}
+                  disabled={!newSectionName.trim()}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-800"
                 >
-                  <i className="fas fa-times text-[10px]"></i>
+                  Add Collection
                 </button>
               </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="New Collection Name"
-              value={newSectionName}
-              onChange={e => setNewSectionName(e.target.value)}
-              className="flex-grow p-2 bg-gray-50 rounded-lg border border-gray-200 text-sm outline-none focus:border-pink-400"
-            />
-            <button 
-              onClick={handleAddSection}
-              disabled={!newSectionName.trim()}
-              className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-50"
-            >
-              Add Collection
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {showForm && (
-        <div className="bg-white p-6 rounded-2xl shadow-xl border border-pink-100 mb-10 animate-pop-in">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 font-serif">
-            {isEditing ? 'Edit Product' : 'Add New Product'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Product list with clear Inventory Header */}
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-pink-50">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800 font-serif">Product Inventory</h3>
+              <span className="text-xs font-bold bg-pink-50 text-pink-600 px-3 py-1 rounded-full">{products.length} Products</span>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+              {products.map(product => (
+                <div key={product.id} className="bg-white p-4 rounded-xl border border-pink-50/70 flex items-center space-x-4 shadow-sm hover:shadow-md hover:border-pink-100 transition-all">
+                  <img 
+                      src={product.images[0]} 
+                      alt={product.name} 
+                      className="w-16 h-16 rounded-xl object-cover bg-gray-100 border border-gray-100" 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => e.currentTarget.src = 'https://placehold.co/100x100?text=No+Img'}
+                  />
+                  <div className="flex-grow min-w-0">
+                    <h4 className="font-bold text-gray-800 truncate">{product.name}</h4>
+                    <p className="text-xs text-gray-500 font-medium">{product.category} • <span className="capitalize">{product.paymentTier}</span></p>
+                  </div>
+                  <div className="flex space-x-2 shrink-0">
+                    <button 
+                      onClick={() => handleEdit(product)}
+                      className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition-colors"
+                      title="Edit Product"
+                    >
+                      <i className="fas fa-edit text-xs"></i>
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(product.id)}
+                      className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                      title="Delete Product"
+                    >
+                      <i className="fas fa-trash text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Right Column: Broadcast & Data management */}
+        <div className="md:col-span-5 space-y-8 md:sticky md:top-24">
+          
+          {/* BROADCAST NOTIFICATION SECTION */}
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-pink-50">
+            <h3 className="text-lg font-bold text-gray-800 mb-2 font-serif flex items-center">
+              <i className="fas fa-bell text-pink-500 mr-2 animate-bounce"></i> Broadcast Notification
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Send a real-time push notification to all users currently viewing the app.
+            </p>
+            <form onSubmit={handleSendNotification} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Product Name</label>
                 <input 
-                  required
                   type="text" 
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
+                  placeholder="Notification Title"
+                  value={notificationTitle}
+                  onChange={e => setNotificationTitle(e.target.value)}
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
-                <select 
-                  value={formData.category}
-                  onChange={e => setFormData({...formData, category: e.target.value as Category})}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                >
-                  <option value="Cake">Cake</option>
-                  <option value="Confectionery">Confectionery</option>
-                </select>
+                <textarea 
+                  placeholder="Notification Message"
+                  value={notificationBody}
+                  onChange={e => setNotificationBody(e.target.value)}
+                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 resize-none"
+                  rows={2}
+                  required
+                />
               </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Description</label>
-                <button 
-                  type="button" 
-                  onClick={generateDescription}
-                  disabled={isGeneratingDesc || !formData.name}
-                  className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 transition-colors flex items-center disabled:opacity-50"
-                >
-                  {isGeneratingDesc ? (
-                    <><i className="fas fa-spinner fa-spin mr-1"></i> Writing...</>
-                  ) : (
-                    <><i className="fas fa-wand-magic-sparkles mr-1"></i> Auto-Write</>
-                  )}
-                </button>
-              </div>
-              <textarea 
-                required
-                rows={3}
-                value={formData.description}
-                onChange={e => setFormData({...formData, description: e.target.value})}
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none resize-none"
-                placeholder={isGeneratingDesc ? "AI is generating description..." : "Enter product description..."}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {formData.category === 'Cake' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (0.5kg)</label>
-                    <input 
-                      type="number" 
-                      value={formData.prices['0.5kg'] || ''}
-                      onChange={e => setFormData({...formData, prices: {...formData.prices, '0.5kg': Number(e.target.value)}})}
-                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                      placeholder="₹"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (1kg)</label>
-                    <input 
-                      type="number" 
-                      value={formData.prices['1kg'] || ''}
-                      onChange={e => setFormData({...formData, prices: {...formData.prices, '1kg': Number(e.target.value)}})}
-                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                      placeholder="₹"
-                    />
-                  </div>
-                </>
-              ) : (
-                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Price (Piece)</label>
-                    <input 
-                      type="number" 
-                      value={formData.prices['piece'] || ''}
-                      onChange={e => setFormData({...formData, prices: {...formData.prices, 'piece': Number(e.target.value)}})}
-                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                      placeholder="₹"
-                    />
-                  </div>
-              )}
-              
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Tier</label>
-                <select 
-                  value={formData.paymentTier}
-                  onChange={e => setFormData({...formData, paymentTier: e.target.value as PaymentTier})}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                >
-                  <option value="standard">Standard</option>
-                  <option value="premium">Premium</option>
-                  <option value="luxury">Luxury</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sections (Collections)</label>
-              <div className="flex flex-wrap gap-2">
-                {sections.map(section => (
-                  <button
-                    type="button"
-                    key={section}
-                    onClick={() => toggleProductSection(section)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                      formData.sections.includes(section)
-                        ? 'bg-pink-500 text-white border-pink-500'
-                        : 'bg-white text-gray-500 border-gray-200'
-                    }`}
-                  >
-                    {section}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Product Images</label>
-                <button 
-                    type="button" 
-                    onClick={generateImage}
-                    disabled={isGeneratingImg || !formData.name}
-                    className="text-[10px] bg-purple-50 text-purple-600 px-3 py-1 rounded-full font-bold hover:bg-purple-100 transition-colors flex items-center disabled:opacity-50"
-                  >
-                    {isGeneratingImg ? (
-                      <><i className="fas fa-spinner fa-spin mr-1"></i> Designing...</>
-                    ) : (
-                      <><i className="fas fa-image mr-1"></i> Generate AI Photo</>
-                    )}
-                </button>
-              </div>
-
-              {/* GENERATED IMAGE DOWNLOAD SECTION */}
-              {generatedImage && (
-                <div className="mt-2 mb-6 p-4 bg-green-50 rounded-xl border border-green-200 animate-pop-in">
-                    <h4 className="font-bold text-green-800 mb-3 text-sm flex items-center">
-                    <i className="fas fa-check-circle mr-2"></i> Design Generated!
-                    </h4>
-                    
-                    <div className="flex flex-col md:flex-row gap-4 items-center">
-                        <img src={generatedImage} alt="AI Generated" className="w-24 h-24 object-cover rounded-lg shadow-md bg-white border border-green-100" />
-                        
-                        <div className="flex-1">
-                            <p className="text-[10px] text-green-700 font-bold mb-2 uppercase tracking-wider">Instructions for Vercel/Production:</p>
-                            <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside font-medium bg-white/50 p-3 rounded-lg border border-green-100">
-                                <li>
-                                    <a 
-                                        href={generatedImage} 
-                                        download={`${formData.name.replace(/\s+/g, '-').toLowerCase()}-cake.png`} 
-                                        className="text-pink-600 underline font-black hover:text-pink-700"
-                                    >
-                                        Click here to Download Image
-                                    </a>
-                                </li>
-                                <li>Upload to <strong>Google Drive</strong> (or any host).</li>
-                                <li>Copy the link (Ensure "Anyone with link" is ON).</li>
-                                <li>Paste the link in the <strong>Image URL</strong> box below.</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-              )}
-
-              <div className="bg-blue-50 p-3 rounded-lg mb-4 text-xs text-blue-800 border border-blue-100">
-                <strong>Tip:</strong> You can paste a Google Drive share link directly.
-              </div>
-              
-              {formData.images.map((img, idx) => (
-                <div key={idx} className="mb-4">
-                  <div className="flex gap-2 mb-2">
-                    <input 
-                      type="text" 
-                      value={img}
-                      onChange={e => handleImageChange(idx, e.target.value)}
-                      className="flex-grow p-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-pink-500 outline-none"
-                      placeholder="Image URL (Paste Drive Link)"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveImageField(idx)}
-                      className="p-3 text-red-400 hover:text-red-600 font-bold"
-                    >
-                      <i className="fas fa-trash"></i>
-                    </button>
-                  </div>
-                  {/* Image Preview */}
-                  {img && (
-                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative group">
-                      <img 
-                        src={img} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => e.currentTarget.src = 'https://placehold.co/100x100?text=Error'}
-                      />
-                      {img.startsWith('data:image') && (
-                         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                            <span className="text-[10px] bg-black/50 text-white px-1 rounded">Base64</span>
-                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <button 
-                type="button" 
-                onClick={handleAddImageField}
-                className="text-pink-500 text-xs font-bold uppercase tracking-wider hover:text-pink-600"
-              >
-                + Add Another Image
-              </button>
-            </div>
-
-            <button type="submit" className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold shadow-lg active:scale-[0.98] transition-all">
-              {isEditing ? 'Save Changes' : 'Create Product'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* BROADCAST NOTIFICATION SECTION */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-50 mt-8 mb-8">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif flex items-center">
-          <i className="fas fa-bell text-pink-500 mr-2"></i> Broadcast Notification
-        </h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Send a real-time push notification to all users currently viewing the app.
-        </p>
-        <form onSubmit={handleSendNotification} className="space-y-4">
-          <div>
-            <input 
-              type="text" 
-              placeholder="Notification Title"
-              value={notificationTitle}
-              onChange={e => setNotificationTitle(e.target.value)}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400"
-              required
-            />
-          </div>
-          <div>
-            <textarea 
-              placeholder="Notification Message"
-              value={notificationBody}
-              onChange={e => setNotificationBody(e.target.value)}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 resize-none"
-              rows={2}
-              required
-            />
-          </div>
-          <button 
-            type="submit"
-            className="px-6 py-3 bg-pink-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-pink-200 hover:bg-pink-600 active:scale-95 transition-all flex items-center"
-          >
-            <i className="fas fa-paper-plane mr-2"></i> Send to All Users
-          </button>
-        </form>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {products.map(product => (
-          <div key={product.id} className="bg-white p-4 rounded-xl border border-pink-50 flex items-center space-x-4 shadow-sm hover:shadow-md transition-shadow">
-            <img 
-                src={product.images[0]} 
-                alt={product.name} 
-                className="w-16 h-16 rounded-lg object-cover bg-gray-100" 
-                referrerPolicy="no-referrer"
-                onError={(e) => e.currentTarget.src = 'https://placehold.co/100x100?text=No+Img'}
-            />
-            <div className="flex-grow">
-              <h3 className="font-bold text-gray-800">{product.name}</h3>
-              <p className="text-xs text-gray-500">{product.category} • {product.paymentTier}</p>
-            </div>
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => handleEdit(product)}
-                className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100"
-              >
-                <i className="fas fa-edit text-xs"></i>
-              </button>
-              <button 
-                onClick={() => handleDelete(product.id)}
-                className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100"
-              >
-                <i className="fas fa-trash text-xs"></i>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* DATA BACKUP & RESTORE SECTION */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-50 mt-8">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 font-serif">Data Backup & Migration</h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Take a backup every time you modify products or add a new product. You can also push your local data directly to Firebase.
-        </p>
-        <div className="flex flex-wrap gap-4 mb-4">
-          <button 
-            onClick={migrateToFirebase}
-            className="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg text-sm font-bold hover:bg-orange-100 flex items-center transition-colors"
-          >
-            <i className="fas fa-database mr-2"></i> Migrate to Firebase
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          <button 
-            onClick={handleExportData}
-            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 flex items-center transition-colors"
-          >
-            <i className="fas fa-download mr-2"></i> Export Backup
-          </button>
-          
-          <label className="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-bold hover:bg-green-100 flex items-center cursor-pointer transition-colors">
-            <i className="fas fa-upload mr-2"></i> Import Backup
-            <input 
-              type="file" 
-              accept=".json" 
-              className="hidden" 
-              onChange={handleImportData}
-            />
-          </label>
-        </div>
-      </div>
-      {showAdminsModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md relative animate-pop-in">
-            <button 
-              onClick={() => setShowAdminsModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-            <h3 className="text-xl font-bold text-gray-800 mb-2 font-serif">Manage Admins</h3>
-            <p className="text-xs text-gray-500 mb-6">
-              Add email addresses for Google Sign-In, or provide a password to create an Email/Password account.
-            </p>
-            <form onSubmit={handleAddAdmin} className="flex flex-col gap-3 mb-6">
-              <input 
-                type="email" 
-                placeholder="Admin Email"
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
-                value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
-                required
-              />
-              <input 
-                type="password" 
-                placeholder="Password (Optional - for Email Login)"
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
-                value={newAdminPassword}
-                onChange={(e) => setNewAdminPassword(e.target.value)}
-              />
               <button 
                 type="submit"
-                disabled={adminAddLoading}
-                className="w-full py-3 bg-pink-500 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-pink-600 active:scale-95 transition-all disabled:opacity-50 mt-2"
+                className="w-full py-3 bg-pink-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-pink-200 hover:bg-pink-600 active:scale-95 transition-all flex items-center justify-center"
               >
-                {adminAddLoading ? 'Adding...' : 'Add Admin'}
+                <i className="fas fa-paper-plane mr-2"></i> Send to All Users
               </button>
             </form>
-            
-            <h4 className="text-sm font-bold text-gray-700 mb-3">Current Admins</h4>
-            <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto bg-gray-50">
-              {adminList.map((email) => (
-                <div key={email} className="p-3 flex justify-between items-center hover:bg-white transition-colors">
-                  <span className="text-sm font-medium text-gray-700 truncate pr-2">{email}</span>
-                  <button 
-                    onClick={() => handleRemoveAdmin(email)}
-                    className="w-8 h-8 shrink-0 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
-                    title="Remove Admin"
-                  >
-                    <i className="fas fa-trash text-xs"></i>
-                  </button>
-                </div>
-              ))}
-              {adminList.length === 0 && (
-                <div className="p-4 text-sm text-gray-500 italic text-center">
-                  No admins found.
-                </div>
-              )}
+          </div>
+
+          {/* DATA BACKUP & RESTORE SECTION */}
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-pink-50">
+            <h3 className="text-lg font-bold text-gray-800 mb-2 font-serif flex items-center">
+              <i className="fas fa-server text-indigo-500 mr-2"></i> Data & Migration
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Take a backup every time you modify products or add a new product. You can also push your local data directly to Firebase.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={migrateToFirebase}
+                className="w-full py-3 bg-orange-50 text-orange-600 rounded-xl text-sm font-bold hover:bg-orange-100 flex items-center justify-center transition-all"
+              >
+                <i className="fas fa-database mr-2"></i> Migrate to Firebase
+              </button>
+              
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                <button 
+                  onClick={handleExportData}
+                  className="py-3 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 flex items-center justify-center transition-all"
+                >
+                  <i className="fas fa-download mr-2"></i> Export Backup
+                </button>
+                
+                <label className="py-3 bg-green-50 text-green-600 rounded-xl text-xs font-bold hover:bg-green-100 flex items-center justify-center cursor-pointer transition-all">
+                  <i className="fas fa-upload mr-2"></i> Import Backup
+                  <input 
+                    type="file" 
+                    accept=".json" 
+                    className="hidden" 
+                    onChange={handleImportData}
+                  />
+                </label>
+              </div>
             </div>
           </div>
+
         </div>
-      )}
-    </div>
-  );
+      </div>
+      </div>
+    {showAdminsModal && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-md relative animate-pop-in my-auto max-h-[90vh] overflow-y-auto">
+          <button 
+            onClick={() => setShowAdminsModal(false)}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+          <h3 className="text-xl font-bold text-gray-800 mb-2 font-serif">Manage Admins</h3>
+          <p className="text-xs text-gray-500 mb-6">
+            Add email addresses for Google Sign-In, or provide a password to create an Email/Password account.
+          </p>
+          <form onSubmit={handleAddAdmin} className="flex flex-col gap-3 mb-6">
+            <input 
+              type="email" 
+              placeholder="Admin Email"
+              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
+              value={newAdminEmail}
+              onChange={(e) => setNewAdminEmail(e.target.value)}
+              required
+            />
+            <input 
+              type="password" 
+              placeholder="Password (Optional - for Email Login)"
+              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-pink-400 focus:bg-white transition-colors"
+              value={newAdminPassword}
+              onChange={(e) => setNewAdminPassword(e.target.value)}
+            />
+            <button 
+              type="submit"
+              disabled={adminAddLoading}
+              className="w-full py-3 bg-pink-500 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-pink-600 active:scale-95 transition-all disabled:opacity-50 mt-2"
+            >
+              {adminAddLoading ? 'Adding...' : 'Add Admin'}
+            </button>
+          </form>
+          
+          <h4 className="text-sm font-bold text-gray-700 mb-3">Current Admins</h4>
+          <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 max-h-48 overflow-y-auto bg-gray-50">
+            {adminList.map((email) => (
+              <div key={email} className="p-3 flex justify-between items-center hover:bg-white transition-colors">
+                <span className="text-sm font-medium text-gray-700 truncate pr-2">{email}</span>
+                <button 
+                  onClick={() => handleRemoveAdmin(email)}
+                  className="w-8 h-8 shrink-0 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                  title="Remove Admin"
+                >
+                  <i className="fas fa-trash text-xs"></i>
+                </button>
+              </div>
+            ))}
+            {adminList.length === 0 && (
+              <div className="p-4 text-sm text-gray-500 italic text-center">
+                No admins found.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
 }

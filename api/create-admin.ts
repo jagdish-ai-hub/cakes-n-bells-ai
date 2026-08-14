@@ -8,13 +8,34 @@ if (!getApps().length) {
   try {
     const serviceAccountStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     if (serviceAccountStr) {
-      const serviceAccount = JSON.parse(serviceAccountStr);
+      let serviceAccount;
+      try {
+        serviceAccount = JSON.parse(serviceAccountStr);
+      } catch (e) {
+        // If it's base64 encoded
+        try {
+          const decoded = Buffer.from(serviceAccountStr, 'base64').toString('utf8');
+          serviceAccount = JSON.parse(decoded);
+        } catch (b64Err) {
+          // If it has literal newlines or escaped newlines, normalize them
+          try {
+            const cleaned = serviceAccountStr.replace(/\\n/g, '\n');
+            serviceAccount = JSON.parse(cleaned);
+          } catch (cleanErr) {
+            throw new Error(`Failed to parse Firebase Service Account JSON string: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+
       initializeApp({
         credential: cert(serviceAccount)
       });
+      console.log('Firebase Admin initialized successfully in create-admin with Service Account Key');
+    } else {
+      console.warn('FIREBASE_SERVICE_ACCOUNT_KEY is not defined. Firebase Admin will not be initialized in create-admin api.');
     }
   } catch (error) {
-    console.error('Firebase admin initialization error', error);
+    console.error('Firebase admin initialization error in create-admin:', error);
   }
 }
 
@@ -31,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Ensure Firebase was initialized properly
   if (!getApps().length) {
-     return res.status(500).json({ error: 'Firebase Admin not configured. Set FIREBASE_SERVICE_ACCOUNT_KEY env var in Vercel.' });
+     return res.status(500).json({ error: 'Firebase Admin is not initialized because the FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not defined. Please add FIREBASE_SERVICE_ACCOUNT_KEY under AI Studio Settings (the gear icon on the top) or in your Vercel/environment settings.' });
   }
 
   try {
@@ -46,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           password: password,
         });
       } catch (authErr: any) {
-        // If user already exists, that might be fine (e.g. they signed in with Google before)
+        // If user already exists, that might be fine
         if (authErr.code !== 'auth/email-already-exists') {
           throw authErr;
         }

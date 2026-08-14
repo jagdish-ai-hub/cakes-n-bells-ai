@@ -17,6 +17,8 @@ const Payment: React.FC<PaymentProps> = ({ lastOrder }) => {
   const { products } = useProducts();
   const [productDetails, setProductDetails] = useState<Product | undefined>(undefined);
   const [isCopied, setIsCopied] = useState(false);
+  const [countdown, setCountdown] = useState<number>(lastOrder?.customer.paymentMethod === 'COD' ? 10 : 0);
+  const [isAutoRedirectActive, setIsAutoRedirectActive] = useState<boolean>(lastOrder?.customer.paymentMethod === 'COD');
 
   const handleCopyNumber = () => {
     navigator.clipboard.writeText('9322820147');
@@ -30,8 +32,46 @@ const Payment: React.FC<PaymentProps> = ({ lastOrder }) => {
     } else {
       const p = products.find(prod => prod.id === lastOrder.item.productId);
       setProductDetails(p);
+      setCountdown(lastOrder.customer.paymentMethod === 'COD' ? 10 : 0);
+      setIsAutoRedirectActive(lastOrder.customer.paymentMethod === 'COD');
+
+      // Trigger server-side automated message dispatch
+      fetch('/api/send-whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderDetails: lastOrder.item,
+          customerDetails: lastOrder.customer
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('Automated server notification response:', data);
+      })
+      .catch(err => {
+        console.error('Failed to trigger background automated WhatsApp:', err);
+      });
     }
   }, [lastOrder, navigate, products]);
+
+  // Handle countdown effect
+  useEffect(() => {
+    if (!lastOrder || !isAutoRedirectActive || lastOrder.customer.paymentMethod !== 'COD') return;
+    if (countdown <= 0) {
+      handleWhatsAppRedirect();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [countdown, isAutoRedirectActive, lastOrder]);
+
+  const toggleAutoRedirect = () => {
+    setIsAutoRedirectActive(!isAutoRedirectActive);
+  };
 
   if (!lastOrder) return null;
 
@@ -101,7 +141,7 @@ ${closingText}`;
             </div>
             
             {/* Amount Badge */}
-            <div className="mb-8">
+            <div className="mb-6">
               <span className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border ${
                 currentTier === 'luxury' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                 currentTier === 'premium' ? 'bg-pink-50 text-pink-600 border-pink-100' :
@@ -110,6 +150,8 @@ ${closingText}`;
                 QR for payment of ₹{amountToPay}
               </span>
             </div>
+
+
 
             <div className="bg-pink-50/80 backdrop-blur py-4 px-8 rounded-2xl inline-flex flex-col items-center mb-6 border border-pink-100">
               <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">Pay to this mobile number:</span>
@@ -150,12 +192,42 @@ ${closingText}`;
           </div>
         ) : (
           <div className="p-8 md:p-12 text-center">
-            <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-sm">
+            <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
               <i className="fas fa-check text-5xl"></i>
             </div>
             <h2 className="text-3xl font-black text-gray-900 mb-2 font-serif tracking-tight">Order Logged!</h2>
-            <p className="text-gray-500 mb-10 font-medium">Click below to finalize your COD order</p>
+            <p className="text-gray-500 mb-6 font-medium">Auto-confirming your order on WhatsApp...</p>
             
+            {/* Smart Automated Redirect Banner for COD */}
+            <div className="mb-8 p-5 bg-pink-50/50 rounded-2xl border border-pink-100 flex flex-col items-center justify-center text-center animate-pulse">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="relative flex h-3.5 w-3.5">
+                  <span className={`${isAutoRedirectActive ? 'animate-ping' : ''} absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75`}></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-pink-500"></span>
+                </span>
+                <span className="text-sm font-black text-pink-600 uppercase tracking-wider font-serif">
+                  {isAutoRedirectActive ? `Redirecting in ${countdown}s` : 'Redirect Paused'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 font-medium mb-4 max-w-[320px]">
+                To complete your COD booking, WhatsApp will open automatically to send your address details.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={toggleAutoRedirect}
+                  className="px-4 py-2 bg-white text-gray-700 hover:text-pink-600 rounded-xl text-xs font-bold border border-pink-200 shadow-sm transition-all"
+                >
+                  {isAutoRedirectActive ? 'Pause Auto-Redirect' : 'Resume Auto-Redirect'}
+                </button>
+                <button
+                  onClick={handleWhatsAppRedirect}
+                  className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-bold shadow-md transition-all animate-bounce"
+                >
+                  Redirect Now <i className="fas fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            </div>
+
             <div className="bg-cream/50 p-8 rounded-3xl mb-10 text-left border border-pink-50">
               <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-widest border-b border-pink-100 pb-4 mb-6">Order Summary</h4>
               <div className="space-y-4">

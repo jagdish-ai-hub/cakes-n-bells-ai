@@ -105,112 +105,149 @@ const Checkout: React.FC<CheckoutProps> = ({ setLastOrder }) => {
   };
 
   return (
-    <div className="p-4 max-w-lg mx-auto animate-in slide-in-from-right-10 duration-500">
-      <header className="mb-8 mt-4">
-        <h1 className="text-3xl font-bold text-gray-800 font-serif">Checkout</h1>
-        <p className="text-gray-500 mt-2">Almost there! We just need some details to deliver your treats.</p>
+    <div className="p-4 max-w-lg md:max-w-6xl mx-auto animate-in slide-in-from-right-10 duration-500 md:py-10">
+      <header className="mb-8 mt-4 md:mb-10">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-800 font-serif">Checkout</h1>
+        <p className="text-gray-500 mt-2 text-sm md:text-base">Almost there! We just need some details to deliver your treats.</p>
       </header>
 
-      {/* Order Summary Card */}
-      <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-100 mb-8 flex items-center space-x-4">
-        <div className="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center text-pink-500 text-2xl">
-          <i className="fas fa-shopping-basket"></i>
-        </div>
-        <div className="flex-grow">
-          <h3 className="font-bold text-gray-800">{item.name}</h3>
-          <p className="text-xs text-gray-500">{item.weight} x {item.quantity}</p>
-        </div>
-        <div className="text-lg font-bold text-pink-600">₹{item.totalPrice}</div>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        {/* Left Side: Delivery Details Form */}
+        <div className="md:col-span-7 space-y-6 order-2 md:order-1 bg-white md:p-8 md:rounded-[2rem] md:border md:border-pink-50 md:shadow-sm">
+          <h2 className="hidden md:block text-xl font-bold text-gray-800 mb-2 font-serif border-b border-gray-100 pb-4">
+            Delivery & Payment Details
+          </h2>
 
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
-          <input 
-            type="text" 
-            placeholder="e.g. Rahul Sharma"
-            className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.fullName ? 'border-red-300' : 'border-gray-100'}`}
-            value={form.fullName}
-            onChange={(e) => setForm({...form, fullName: e.target.value})}
-          />
-          {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Rahul Sharma"
+              className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.fullName ? 'border-red-300' : 'border-gray-100'}`}
+              value={form.fullName}
+              onChange={(e) => setForm({...form, fullName: e.target.value})}
+            />
+            {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Mobile Number</label>
+            <input 
+              type="tel" 
+              placeholder="10 digit number"
+              className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.mobile ? 'border-red-300' : 'border-gray-100'}`}
+              value={form.mobile}
+              onChange={(e) => setForm({...form, mobile: e.target.value})}
+            />
+            {errors.mobile && <p className="text-xs text-red-500 mt-1">{errors.mobile}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Full Delivery Address</label>
+            <textarea 
+              rows={3}
+              placeholder="House no, Street, Landmark"
+              className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none resize-none ${errors.address ? 'border-red-300' : 'border-gray-100'}`}
+              value={form.address}
+              onChange={(e) => setForm({...form, address: e.target.value})}
+            />
+            {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Pincode</label>
+            <input 
+              type="text" 
+              maxLength={6}
+              placeholder="6-digit pincode"
+              className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.pincode ? 'border-red-300' : 'border-gray-100'}`}
+              value={form.pincode}
+              onChange={(e) => setForm({...form, pincode: e.target.value.replace(/\D/g, '')})}
+            />
+            {errors.pincode && <p className="text-xs text-red-500 mt-1">{errors.pincode}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-3">Payment Method</label>
+            <div className="space-y-3">
+              {[
+                { id: 'COD', label: 'Cash on Delivery', icon: 'fa-money-bill-wave' },
+                { id: 'UPI', label: 'Pay via UPI', icon: 'fa-qrcode' }
+              ].map(method => (
+                <label 
+                  key={method.id}
+                  className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    form.paymentMethod === method.id ? 'border-pink-500 bg-pink-50 shadow-sm' : 'border-gray-100'
+                  }`}
+                >
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    className="hidden" 
+                    checked={form.paymentMethod === method.id}
+                    onChange={() => setForm({...form, paymentMethod: method.id as 'COD' | 'UPI'})}
+                  />
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 ${form.paymentMethod === method.id ? 'border-pink-500' : 'border-gray-300'}`}>
+                    {form.paymentMethod === method.id && <div className="w-3 h-3 bg-pink-500 rounded-full"></div>}
+                  </div>
+                  <i className={`fas ${method.icon} text-gray-400 mr-3`}></i>
+                  <span className={`font-semibold ${form.paymentMethod === method.id ? 'text-pink-600' : 'text-gray-600'}`}>
+                    {method.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={handleProceed}
+            className="w-full cake-pink text-white py-5 rounded-2xl font-bold shadow-lg shadow-pink-200 active:scale-[0.98] transition-all mt-8 hover:opacity-95"
+          >
+            Proceed to Order
+          </button>
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Mobile Number</label>
-          <input 
-            type="tel" 
-            placeholder="10 digit number"
-            className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.mobile ? 'border-red-300' : 'border-gray-100'}`}
-            value={form.mobile}
-            onChange={(e) => setForm({...form, mobile: e.target.value})}
-          />
-          {errors.mobile && <p className="text-xs text-red-500 mt-1">{errors.mobile}</p>}
-        </div>
+        {/* Right Side: Order Summary sticky card on desktop */}
+        <div className="md:col-span-5 order-1 md:order-2 md:sticky md:top-24 space-y-6">
+          <div className="bg-pink-50/40 p-6 rounded-[2rem] border border-pink-100/60 md:bg-white md:border-pink-100 md:shadow-md">
+            <h3 className="hidden md:block text-lg font-bold text-gray-800 mb-4 font-serif pb-2 border-b border-pink-50">
+              Order Summary
+            </h3>
+            
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-pink-100/50 border border-pink-100 flex items-center justify-center text-pink-500 text-2xl shrink-0">
+                <i className="fas fa-birthday-cake"></i>
+              </div>
+              <div className="flex-grow min-w-0">
+                <h4 className="font-bold text-gray-800 truncate">{item.name}</h4>
+                <p className="text-xs text-gray-500 font-medium">{item.weight} • Qty: {item.quantity}</p>
+              </div>
+              <div className="text-lg font-black text-pink-600 shrink-0">₹{item.totalPrice}</div>
+            </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Full Delivery Address</label>
-          <textarea 
-            rows={3}
-            placeholder="House no, Street, Landmark"
-            className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none resize-none ${errors.address ? 'border-red-300' : 'border-gray-100'}`}
-            value={form.address}
-            onChange={(e) => setForm({...form, address: e.target.value})}
-          />
-          {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
-        </div>
+            {/* Desktop Billing Breakdown */}
+            <div className="space-y-2 border-t border-dashed border-pink-100/80 pt-4 text-sm font-medium text-gray-600">
+              <div className="flex justify-between">
+                <span>Items Subtotal</span>
+                <span className="text-gray-800">₹{item.totalPrice}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Delivery Charges</span>
+                <span className="text-green-600 font-bold">FREE</span>
+              </div>
+              <div className="flex justify-between border-t border-pink-100/50 pt-3 text-base font-black text-gray-900">
+                <span>Total Net Payable</span>
+                <span className="text-pink-600">₹{item.totalPrice}</span>
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Pincode</label>
-          <input 
-            type="text" 
-            maxLength={6}
-            placeholder="6-digit pincode"
-            className={`w-full p-4 bg-white text-gray-900 rounded-xl border-2 transition-all focus:border-pink-500 outline-none ${errors.pincode ? 'border-red-300' : 'border-gray-100'}`}
-            value={form.pincode}
-            onChange={(e) => setForm({...form, pincode: e.target.value.replace(/\D/g, '')})}
-          />
-          {errors.pincode && <p className="text-xs text-red-500 mt-1">{errors.pincode}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-3">Payment Method</label>
-          <div className="space-y-3">
-            {[
-              { id: 'COD', label: 'Cash on Delivery', icon: 'fa-money-bill-wave' },
-              { id: 'UPI', label: 'Pay via UPI', icon: 'fa-qrcode' }
-            ].map(method => (
-              <label 
-                key={method.id}
-                className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  form.paymentMethod === method.id ? 'border-pink-500 bg-pink-50 shadow-sm' : 'border-gray-100'
-                }`}
-              >
-                <input 
-                  type="radio" 
-                  name="payment" 
-                  className="hidden" 
-                  checked={form.paymentMethod === method.id}
-                  onChange={() => setForm({...form, paymentMethod: method.id as 'COD' | 'UPI'})}
-                />
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 ${form.paymentMethod === method.id ? 'border-pink-500' : 'border-gray-300'}`}>
-                  {form.paymentMethod === method.id && <div className="w-3 h-3 bg-pink-500 rounded-full"></div>}
-                </div>
-                <i className={`fas ${method.icon} text-gray-400 mr-3`}></i>
-                <span className={`font-semibold ${form.paymentMethod === method.id ? 'text-pink-600' : 'text-gray-600'}`}>
-                  {method.label}
-                </span>
-              </label>
-            ))}
+            {/* Guarantees & Safe badge */}
+            <div className="hidden md:flex items-center gap-3 mt-6 p-3 bg-pink-50/20 rounded-xl border border-pink-100/30 text-[10px] text-gray-500 font-medium">
+              <i className="fas fa-shield-alt text-pink-500 text-sm shrink-0"></i>
+              <span>Guaranteed Fresh Delivery & Safe Payments processed directly.</span>
+            </div>
           </div>
         </div>
-
-        <button 
-          onClick={handleProceed}
-          className="w-full cake-pink text-white py-5 rounded-2xl font-bold shadow-lg shadow-pink-200 active:scale-[0.98] transition-all mt-8"
-        >
-          Proceed to Order
-        </button>
       </div>
 
       {/* Save Address Prompt Modal */}
