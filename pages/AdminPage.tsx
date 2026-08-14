@@ -227,24 +227,49 @@ export default function AdminPage() {
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAdminEmail.trim()) return;
+    const cleanEmail = newAdminEmail.trim().toLowerCase();
+    if (!cleanEmail) return;
     setAdminAddLoading(true);
+
     try {
-      const response = await fetch('/api/create-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: newAdminEmail.trim().toLowerCase(),
-          password: newAdminPassword.trim() || undefined
-        })
+      // 1. Direct Firestore write - ensures the admin is authorized immediately in the database
+      await setDoc(doc(db, 'admins', cleanEmail), {
+        email: cleanEmail,
+        addedAt: new Date().toISOString()
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to add admin');
+
+      // 2. Safely attempt server-side Auth user creation if backend endpoint is accessible
+      let serverAuthCreated = false;
+      try {
+        const response = await fetch('/api/create-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: cleanEmail,
+            password: newAdminPassword.trim() || undefined
+          })
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          if (response.ok && data.success) {
+            serverAuthCreated = true;
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Backend /api/create-admin endpoint not available or non-JSON returned:', fetchErr);
+      }
       
       setNewAdminEmail('');
       setNewAdminPassword('');
-      fetchAdmins();
-      alert('Admin added successfully!');
+      await fetchAdmins();
+
+      if (serverAuthCreated && newAdminPassword.trim()) {
+        alert(`Admin ${cleanEmail} added successfully with email & password login!`);
+      } else {
+        alert(`Admin ${cleanEmail} added successfully!\n\nThis user is now authorized and can sign in with Google using ${cleanEmail}.`);
+      }
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Failed to add admin');
@@ -325,13 +350,18 @@ export default function AdminPage() {
         body: JSON.stringify({ title: notificationTitle, body: notificationBody })
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        alert(`Push Notification sent successfully! Delivered to ${data.sent} devices. Failed: ${data.failed}.`);
-        setNotificationTitle('');
-        setNotificationBody('');
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (response.ok) {
+          alert(`Push Notification sent successfully! Delivered to ${data.sent} devices. Failed: ${data.failed}.`);
+          setNotificationTitle('');
+          setNotificationBody('');
+        } else {
+          alert(`Failed to send: ${data.error || 'Unknown error'}. \nNote: You must set FIREBASE_SERVICE_ACCOUNT_KEY environment variable to use server push notifications.`);
+        }
       } else {
-        alert(`Failed to send: ${data.error}. \nNote: You must set FIREBASE_SERVICE_ACCOUNT_KEY environment variable in Vercel to use this feature.`);
+        alert('Server returned a non-JSON response. Ensure your backend server is deployed or FIREBASE_SERVICE_ACCOUNT_KEY is configured.');
       }
     } catch (err) {
       console.error(err);
